@@ -14,6 +14,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Globalization;
 using System.Collections.Generic;
+using System.Collections;
 
 namespace TrackLog
 {
@@ -22,30 +23,60 @@ namespace TrackLog
         public static Geolocator Geolocator { get; set; }
         public static bool RunningInBackground { get; set; }
 
-        public const string DIAG_LOG = "diag.log";
-        public const string LOC_LOG = "loc.log";
+        public const string DIAG_LOG = "diag{0}.log";
+        public const string LOC_LOG = "loc{0}.csv";
+        public const string FOLDER = "TrackLog";
         private const int LOG_LEVEL = 2;
 
         private void Application_RunningInBackground(object sender, RunningInBackgroundEventArgs args)
         {
             diagLog("RunningInBackground");
             RunningInBackground = true;
-            // Suspend all unnecessary processing such as UI updates
         }
 
-        public static void log(string msg, string file)
+        public static void log(string msg, string filename)
         {
             /*
             DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             long t = (long)(DateTime.UtcNow - UnixEpoch).TotalSeconds;
             */
-            var t = DateTime.UtcNow.ToString("o", CultureInfo.CurrentCulture);
+            
+            var t = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.CurrentCulture);
             var store = IsolatedStorageFile.GetUserStoreForApplication();
-            var f = new IsolatedStorageFileStream(file, FileMode.Append, FileAccess.Write, store);
+            var f = new IsolatedStorageFileStream(getFileName(filename), FileMode.Append, FileAccess.Write, store);
             using (StreamWriter writer = new StreamWriter(f))
             {
                 writer.WriteLine(t + " " + msg);
             }
+        }
+
+        private static string getFileName(string baseFileName)
+        {
+            return getFileName(baseFileName, DateTime.Now);
+        }
+
+        private static string getFileName(string baseFileName, DateTime dt)
+        {
+            return string.Format(baseFileName, dt.ToString("yyyy-MM-dd"));
+        }
+
+        public static async Task<string> uploadAll()
+        {
+            //diagLog("Uploading all\n");
+            string res = "";
+            var store = IsolatedStorageFile.GetUserStoreForApplication();
+            foreach (string fn in store.GetFileNames())
+            {
+                try
+                {
+                    res += await upload(fn) + "\n";
+                }
+                catch (Exception ex)
+                {
+                    res += "Error: " + ex.Message + " with file: " + fn + "\n";
+                }
+            }
+            return res;
         }
 
         public static async Task<string> upload(string file)
@@ -63,20 +94,24 @@ namespace TrackLog
                 }
                 LiveConnectClient liveClient = new LiveConnectClient(auth.Session);
 
-                /*
-                var folderData = new Dictionary<string, object>();
-                folderData.Add("name", "TrackLog");
-                LiveOperationResult operationResult =
-                    await liveClient.PostAsync("me/skydrive", folderData);
-                dynamic result = operationResult.Result;
-                res = string.Join(" ", "Created folder:", result.name, "ID:", result.id);
-                */
+                string folderid = await GetSkyDriveFolderID(FOLDER, liveClient);
+
+                if (folderid == null)
+                {
+                    var folderData = new Dictionary<string, object>();
+                    folderData.Add("name", "TrackLog");
+                    LiveOperationResult operationResult =
+                        await liveClient.PostAsync("me/skydrive", folderData);
+                    dynamic result = operationResult.Result;
+                    res = string.Join(" ", "Created folder:", result.name, "ID:", result.id);
+                    folderid = result.id;
+                }
 
                 var store = IsolatedStorageFile.GetUserStoreForApplication();
                 if (store.FileExists(file))
                 {
                     var f = store.OpenFile(file, System.IO.FileMode.Open, System.IO.FileAccess.Read);
-                    LiveOperationResult operationResult = await liveClient.UploadAsync("me/skydrive", file, f, OverwriteOption.Overwrite);
+                    LiveOperationResult operationResult = await liveClient.UploadAsync(folderid, file, f, OverwriteOption.Overwrite);
                     dynamic result = operationResult.Result;
                     res += string.Join(" ", "Uploaded :", result.name, "ID:", result.id);
                 }
@@ -89,7 +124,7 @@ namespace TrackLog
             }
             return res;
         }
-
+        
         public static void diagLog(string msg, int level = 0)
         {
             if (level < LOG_LEVEL)
@@ -101,24 +136,47 @@ namespace TrackLog
             log(msg, LOC_LOG);
         }
 
-        public static string read(string file)
+        public static string read(string filenamepattern)
         {
-            string res = "";
+            List<string> ls = new List<string>();
             var store = IsolatedStorageFile.GetUserStoreForApplication();
-            if (store.FileExists(file))
+            var filenames = store.GetFileNames(string.Format(filenamepattern, "*"));
+            if (filenames.Length == 0)
+                return "No files found.";
+            string filename = filenames[filenames.Length - 1];
+            // if (store.FileExists(filename))
             {
-                var f = store.OpenFile(file, System.IO.FileMode.Open, System.IO.FileAccess.Read);
-                using (StreamReader reader = new StreamReader(f))
+                var file = store.OpenFile(filename, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+                using (StreamReader reader = new StreamReader(file))
                 {
                     while (reader.Peek() >= 0)
                     {
-                        res += reader.ReadLine() + "\n";
+                        ls.Insert(0, reader.ReadLine());
                     }
                 }
             }
+            string res = "";
+            for (int i = 0; i < ls.Count && i < 5; i++)
+                res += ls[i] + "\n";
             return res;
         }
 
+        private static async Task<string> GetSkyDriveFolderID(string folderName, LiveConnectClient client)
+        {
+            LiveOperationResult operationResult = await client.GetAsync("me/skydrive/files?filter=folders");
+            var iEnum = operationResult.Result.Values.GetEnumerator();
+            iEnum.MoveNext();
+            var folders = iEnum.Current as IEnumerable;
+
+            foreach (dynamic v in folders)
+            {
+                if (v.name == folderName)
+                {
+                    return v.id as string;
+                }
+            }
+            return null;
+        }
 
         /// <summary>
         /// Provides easy access to the root frame of the Phone Application.
@@ -185,7 +243,7 @@ namespace TrackLog
         void geolocator_PositionChanged(Geolocator sender, PositionChangedEventArgs args)
         {
             diagLog("Position changed", 3);
-            locLog(args.Position.Coordinate.Latitude + " " + args.Position.Coordinate.Longitude + " " + args.Position.Coordinate.Accuracy);
+            locLog(string.Join(", ", args.Position.Coordinate.Longitude, args.Position.Coordinate.Latitude, args.Position.Coordinate.Altitude, args.Position.Coordinate.Accuracy));
         }
 
         // Code to execute when the application is launching (eg, from Start)
