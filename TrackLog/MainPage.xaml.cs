@@ -14,11 +14,14 @@ using System.IO.IsolatedStorage;
 using System.IO;
 using System.Globalization;
 using Microsoft.Live;
+using System.Threading.Tasks;
 
 namespace TrackLog
 {
     public partial class MainPage : PhoneApplicationPage
     {
+
+        ProgressIndicator progress;
 
         public MainPage()
         {
@@ -27,19 +30,31 @@ namespace TrackLog
 
         private void Button_Click_2(object sender, RoutedEventArgs e)
         {
-            TextBlock1.Text = App.read(App.DIAG_LOG);
-            TextBlock1.Text += App.read(App.LOC_LOG);
+            TextBlock1.Text = App.tail(App.DIAG_LOG);
+            TextBlock1.Text += "\n";
+            TextBlock1.Text += App.tail(App.LOC_LOG);
         }
 
-        
+        private void statusUpdate(string status)
+        {
+            TextBlock1.Text += status + "\n";
+            if (progress != null)
+                progress.Text = status;
+        }
+
         private async void Button_Click_3(object sender, RoutedEventArgs e)
         {
-            /*
-            TextBlock1.Text = await App.upload(App.DIAG_LOG);
-            TextBlock1.Text += await App.upload(App.LOC_LOG);
-            */
+            progress = new ProgressIndicator();
+            progress.IsVisible = true;
+            progress.IsIndeterminate = true;
+            progress.Text = "Uploading files...";
+
+            SystemTray.SetProgressIndicator(this, progress);
+
             TextBlock1.Text = "";
-            TextBlock1.Text = await App.uploadAll(); 
+            await App.uploadAll(new Progress<string>(statusUpdate));
+
+            SystemTray.SetProgressIndicator(this, null);
         }
     }
 }

@@ -27,6 +27,7 @@ namespace TrackLog
         public const string LOC_LOG = "loc{0}.csv";
         public const string FOLDER = "TrackLog";
         private const int LOG_LEVEL = 2;
+        const string DELIMITER = ", ";
 
         private void Application_RunningInBackground(object sender, RunningInBackgroundEventArgs args)
         {
@@ -34,19 +35,18 @@ namespace TrackLog
             RunningInBackground = true;
         }
 
-        public static void log(string msg, string filename)
+        public static void log(string msg, string filename, string delimiter = " ")
         {
             /*
             DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             long t = (long)(DateTime.UtcNow - UnixEpoch).TotalSeconds;
             */
-            
-            var t = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.CurrentCulture);
+            var time = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.CurrentCulture);
             var store = IsolatedStorageFile.GetUserStoreForApplication();
-            var f = new IsolatedStorageFileStream(getFileName(filename), FileMode.Append, FileAccess.Write, store);
-            using (StreamWriter writer = new StreamWriter(f))
+            var file = new IsolatedStorageFileStream(getFileName(filename), FileMode.Append, FileAccess.Write, store);
+            using (StreamWriter writer = new StreamWriter(file))
             {
-                writer.WriteLine(t + " " + msg);
+                writer.WriteLine(time + delimiter + msg);
             }
         }
 
@@ -60,8 +60,9 @@ namespace TrackLog
             return string.Format(baseFileName, dt.ToString("yyyy-MM-dd"));
         }
 
-        public static async Task<string> uploadAll()
+        public static async Task<string> uploadAll(IProgress<string> progress)
         {
+             
             //diagLog("Uploading all\n");
             string res = "";
             var store = IsolatedStorageFile.GetUserStoreForApplication();
@@ -69,7 +70,9 @@ namespace TrackLog
             {
                 try
                 {
-                    res += await upload(fn) + "\n";
+                    var thisres = await upload(fn);
+                    res += thisres + "\n";
+                    progress.Report(thisres);
                 }
                 catch (Exception ex)
                 {
@@ -79,7 +82,7 @@ namespace TrackLog
             return res;
         }
 
-        public static async Task<string> upload(string file)
+        public static async Task<string> upload(string filename)
         {
             string res = "";
             //diagLog("Uploading " + file);
@@ -98,22 +101,17 @@ namespace TrackLog
 
                 if (folderid == null)
                 {
-                    var folderData = new Dictionary<string, object>();
-                    folderData.Add("name", "TrackLog");
-                    LiveOperationResult operationResult =
-                        await liveClient.PostAsync("me/skydrive", folderData);
-                    dynamic result = operationResult.Result;
-                    res = string.Join(" ", "Created folder:", result.name, "ID:", result.id);
-                    folderid = result.id;
+                    folderid = await createSkyDriveFolder(FOLDER, liveClient);
+                    res = "Created folder: " + FOLDER + "\n"; // , "ID:", folderid);
                 }
 
                 var store = IsolatedStorageFile.GetUserStoreForApplication();
-                if (store.FileExists(file))
+                if (store.FileExists(filename))
                 {
-                    var f = store.OpenFile(file, System.IO.FileMode.Open, System.IO.FileAccess.Read);
-                    LiveOperationResult operationResult = await liveClient.UploadAsync(folderid, file, f, OverwriteOption.Overwrite);
+                    var file = store.OpenFile(filename, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+                    LiveOperationResult operationResult = await liveClient.UploadAsync(folderid, filename, file, OverwriteOption.Overwrite);
                     dynamic result = operationResult.Result;
-                    res += string.Join(" ", "Uploaded :", result.name, "ID:", result.id);
+                    res += "Uploaded :" + result.name; //, "ID:", result.id);
                 }
                 else
                     throw new Exception("file does not exist");
@@ -133,10 +131,10 @@ namespace TrackLog
 
         public static void locLog(string msg)
         {
-            log(msg, LOC_LOG);
+            log(msg, LOC_LOG, DELIMITER);
         }
 
-        public static string read(string filenamepattern)
+        public static string tail(string filenamepattern)
         {
             List<string> ls = new List<string>();
             var store = IsolatedStorageFile.GetUserStoreForApplication();
@@ -159,6 +157,17 @@ namespace TrackLog
             for (int i = 0; i < ls.Count && i < 5; i++)
                 res += ls[i] + "\n";
             return res;
+        }
+
+        private static async Task<string> createSkyDriveFolder(string folderName, LiveConnectClient client)
+        {
+            var folderData = new Dictionary<string, object>();
+            folderData.Add("name", folderName);
+            LiveOperationResult operationResult =
+                await client.PostAsync("me/skydrive", folderData);
+            dynamic result = operationResult.Result;
+            // res = string.Join(" ", "Created folder:", result.name, "ID:", result.id);
+            return result.id;
         }
 
         private static async Task<string> GetSkyDriveFolderID(string folderName, LiveConnectClient client)
@@ -243,7 +252,8 @@ namespace TrackLog
         void geolocator_PositionChanged(Geolocator sender, PositionChangedEventArgs args)
         {
             diagLog("Position changed", 3);
-            locLog(string.Join(", ", args.Position.Coordinate.Longitude, args.Position.Coordinate.Latitude, args.Position.Coordinate.Altitude, args.Position.Coordinate.Accuracy));
+            var coords = args.Position.Coordinate;
+            locLog(string.Join(DELIMITER, coords.Latitude, coords.Longitude, coords.Altitude, coords.Accuracy));
         }
 
         // Code to execute when the application is launching (eg, from Start)
