@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Deployment xmlns="http://schemas.microsoft.com/windowsphone/2012/deployment" AppPlatformVersion="8.0">
   <DefaultLanguage xmlns="" code="en-US" />
-  <App xmlns="" ProductID="{22ea5546-a8da-4ff1-96fa-2c8bc4e925d7}" Title="PhoneApp1" RuntimeType="Silverlight" Version="1.0.0.0" Genre="apps.normal" Author="PhoneApp1 author" Description="Sample description" Publisher="PhoneApp1" PublisherID="{6f4d62fa-a98e-49ab-b4e3-9fb06053a324}">
+  <App xmlns="" ProductID="{6568127d-6727-40ed-b700-6b1bde86a2ab}" Title="TrackLog" RuntimeType="Silverlight" Version="1.0.0.0" Genre="apps.normal" Author="TrackLog author" Description="Sample description" Publisher="TrackLog" PublisherID="{bdd978b3-1bed-4b6d-b55d-c55fc74e3536}">
     <IconPath IsRelative="true" IsResource="false">Assets\ApplicationIcon.png</IconPath>
     <Capabilities>
-      <Capability Name="ID_CAP_SPEECH_RECOGNITION" />
       <Capability Name="ID_CAP_NETWORKING" />
       <Capability Name="ID_CAP_LOCATION" />
       <Capability Name="ID_CAP_WEBBROWSERCOMPONENT" />
+      <Capability Name="ID_CAP_MAP" />
     </Capabilities>
     <Tasks>
       <DefaultTask Name="_default" NavigationPage="MainPage.xaml">
@@ -17,12 +17,12 @@
       </DefaultTask>
     </Tasks>
     <Tokens>
-      <PrimaryToken TokenID="PhoneApp1Token" TaskName="_default">
+      <PrimaryToken TokenID="TrackLogToken" TaskName="_default">
         <TemplateFlip>
           <SmallImageURI IsRelative="true" IsResource="false">Assets\Tiles\FlipCycleTileSmall.png</SmallImageURI>
           <Count>0</Count>
           <BackgroundImageURI IsRelative="true" IsResource="false">Assets\Tiles\FlipCycleTileMedium.png</BackgroundImageURI>
-          <Title>PhoneApp1</Title>
+          <Title>TrackLog</Title>
           <BackContent>
           </BackContent>
           <BackBackgroundImageURI>

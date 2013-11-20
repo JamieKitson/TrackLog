@@ -1,11 +1,12 @@
 ﻿<phone:PhoneApplicationPage
-    x:Class="TrackLog.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
     xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:maps="clr-namespace:Microsoft.Phone.Maps.Controls;assembly=Microsoft.Phone.Maps"
+    x:Class="TrackLog.MainPage"
     mc:Ignorable="d"
     FontFamily="{StaticResource PhoneFontFamilyNormal}"
     FontSize="{StaticResource PhoneFontSizeNormal}"
@@ -39,21 +40,6 @@
             CurrentUICulture of the app at run time.
          -->
 
-        <!--TitlePanel contains the name of the application and page title-->
-        <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28">
-            <TextBlock Text="MY APPLICATION" Style="{StaticResource PhoneTextNormalStyle}" Margin="12,0"/>
-            <TextBlock Text="page name" Margin="9,-7,0,0" Style="{StaticResource PhoneTextTitle1Style}"/>
-        </StackPanel>
-
-        <!--ContentPanel - place additional content here-->
-        <Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0">
-            <Button Content="Read Log" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_2" Margin="10,10,0,0"/>
-            <Button Content="Upload" HorizontalAlignment="Left" Margin="161,10,0,0" VerticalAlignment="Top" Click="Button_Click_3"/>
-            <TextBlock HorizontalAlignment="Left" Height="510" Margin="0,87,0,0" TextWrapping="Wrap" Text="TextBlock1" Name="TextBlock1" VerticalAlignment="Top" Width="456">
-            </TextBlock>
-
-        </Grid>
-
         <!--Uncomment to see an alignment grid to help ensure your controls are
             aligned on common boundaries.  The image has a top margin of -32px to
             account for the System Tray. Set this to 0 (or remove the margin altogether)
@@ -61,6 +47,26 @@
 
             Before shipping remove this XAML and the image itself.-->
         <!--<Image Source="/Assets/AlignmentGrid.png" VerticalAlignment="Top" Height="800" Width="480" Margin="0,-32,0,0" Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" />-->
+        <!--TitlePanel contains the name of the application and page title-->
+        <phone:Pivot x:Name="Pivot1" Title="pivot" Loaded="Pivot_Loaded_1" Grid.RowSpan="2" SelectionChanged="Pivot_SelectionChanged_1">
+            <phone:PivotItem CacheMode="{x:Null}" Header="Logs">
+                <Grid x:Name="ContentPanel">
+                    <Button Content="Read Log" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_2"/>
+
+                    <Button Content="Upload" HorizontalAlignment="Left" Margin="151,0,0,0" VerticalAlignment="Top" Click="Button_Click_3"/>
+                    <TextBlock HorizontalAlignment="Left" Height="513" Margin="0,72,0,0" TextWrapping="Wrap" Text="TextBlock1" x:Name="TextBlock1" VerticalAlignment="Top" Width="456"/>
+
+                </Grid>
+            </phone:PivotItem>
+            <phone:PivotItem CacheMode="{x:Null}" Header="Map">
+                <Grid>
+                    <maps:Map x:Name="Map1" HorizontalAlignment="Left" VerticalAlignment="Top" Height="535" Width="456" Loaded="Map_Loaded_1"/>
+                    <Button Content="+" HorizontalAlignment="Left" Margin="43,521,0,0" VerticalAlignment="Top" Click="Button_Click_1"/>
+                    <Button Content="-" HorizontalAlignment="Left" Margin="109,521,0,0" VerticalAlignment="Top" Click="Button_Click_4"/>
+                    <TextBlock x:Name="curDate1" HorizontalAlignment="Left" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top" Margin="174,544,0,0"/>
+                </Grid>
+            </phone:PivotItem>
+        </phone:Pivot>
     </Grid>
 
 </phone:PhoneApplicationPage>

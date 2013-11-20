@@ -27,7 +27,7 @@ namespace TrackLog
         public const string LOC_LOG = "loc{0}.csv";
         public const string FOLDER = "TrackLog";
         private const int LOG_LEVEL = 2;
-        const string DELIMITER = ", ";
+        public const string DELIMITER = ", ";
 
         private void Application_RunningInBackground(object sender, RunningInBackgroundEventArgs args)
         {
@@ -55,7 +55,7 @@ namespace TrackLog
             return getFileName(baseFileName, DateTime.Now);
         }
 
-        private static string getFileName(string baseFileName, DateTime dt)
+        public static string getFileName(string baseFileName, DateTime dt)
         {
             return string.Format(baseFileName, dt.ToString("yyyy-MM-dd"));
         }
@@ -134,6 +134,25 @@ namespace TrackLog
             log(msg, LOC_LOG, DELIMITER);
         }
 
+        public static List<string> read(string filename)
+        {
+            List<string> ls = new List<string>();
+            var store = IsolatedStorageFile.GetUserStoreForApplication();
+            if (store.FileExists(filename))
+            {
+                var file = store.OpenFile(filename, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+                using (StreamReader reader = new StreamReader(file))
+                {
+                    while (reader.Peek() >= 0)
+                    {
+                        // ls.Insert(0, reader.ReadLine());
+                        ls.Add(reader.ReadLine());
+                    }
+                }
+            }
+            return ls;
+        }
+
         public static string tail(string filenamepattern)
         {
             List<string> ls = new List<string>();
@@ -142,19 +161,9 @@ namespace TrackLog
             if (filenames.Length == 0)
                 return "No files found.";
             string filename = filenames[filenames.Length - 1];
-            // if (store.FileExists(filename))
-            {
-                var file = store.OpenFile(filename, System.IO.FileMode.Open, System.IO.FileAccess.Read);
-                using (StreamReader reader = new StreamReader(file))
-                {
-                    while (reader.Peek() >= 0)
-                    {
-                        ls.Insert(0, reader.ReadLine());
-                    }
-                }
-            }
+            ls = read(filename);
             string res = "";
-            for (int i = 0; i < ls.Count && i < 5; i++)
+            for (int i = ls.Count - 1; (i > ls.Count - 5) && (i >= 0); i--)
                 res += ls[i] + "\n";
             return res;
         }
